@@ -1,0 +1,113 @@
+
+#include <ESP8266WiFi.h>
+
+ 
+const char* ssid = "*************"; //WIFI Name, WeMo will only connect to a 2.4GHz network.
+const char* password = "***********"; //WIFI Password
+
+
+// The pin Led is connected to is D4
+int ledPin = D4;
+// The PWM value that is going to be printed for the led
+int ledvalue=0;
+ 
+WiFiServer server(80);
+ 
+void setup() {
+  Serial.begin(9600);
+  delay(10);
+  
+  pinMode(ledPin, OUTPUT);
+  
+  analogWrite(ledPin, 0);
+  // Connect to WiFi network
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+ 
+  // Start the server
+  server.begin();
+  Serial.println("Server started");
+ 
+  // Print the IP address
+  Serial.print("Use this URL : ");
+  Serial.print("http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("/");
+ 
+}
+ 
+void loop() {
+  // Check if a client has connected
+  WiFiClient client = server.available();
+  if (!client) {
+    return;
+  }
+ 
+  // Wait until the client sends some data
+  Serial.println("new client");
+  while(!client.available()){
+    delay(1);
+  }
+ 
+  // Read the first line of the request
+  String request = client.readStringUntil('\r');
+  Serial.println(request);
+  client.flush();
+  // Match the request
+  if (request.indexOf("submit") != -1) {
+    
+    int ledindex=request.indexOf("ledvalue");
+    ledvalue = contovar(request[ledindex+9],request[ledindex+10],request[ledindex+11],request[ledindex+12]);
+    
+    Serial.println(ledvalue);
+    analogWrite(ledPin,ledvalue);
+  } 
+ 
+ 
+  // Return the response
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println(""); //  do not forget this one
+  client.println("<!DOCTYPE HTML>");
+  client.println("<html>");
+ 
+  client.print("Enter the required value ");
+ 
+  client.println("<form id='txt_form' name='frmText'><label>led: <input type='text' name='ledvalue'><label><br><br></form> <input type='submit' name='submit' value='SendText' >");
+
+  client.println("</html>");
+  delay(1);
+  Serial.println("Client disconnected");
+  Serial.println("");
+}
+
+
+
+int contovar(char s,char t, char u, char v){ // The optained char to be converted to int.;
+  int val=0;
+  if((s-'0')>=0 && (s-'0')<=9){
+    val=(s-'0');
+  }
+  if((t-'0')>=0 && (t-'0')<=9){
+    val=val*10;
+    val=val+(t-'0');
+  }
+  if((u-'0')>=0 && (u-'0')<=9){
+    val=val*10;
+    val=val+(u-'0');
+  }
+  if((v-'0')>=0 && (v-'0')<=9){
+    val=val*10;
+    val=val+(v-'0');
+  }
+  return val;
+}
